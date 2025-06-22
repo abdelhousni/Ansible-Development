@@ -5,3 +5,20 @@ deploy_inventory: true
 deploy_example_repo: true
 deploy_ansiblegalaxy_repo: false
 _github_api_headers: "{{ {'GITHUB_TOKEN': lookup('ansible.builtin.env', 'GITHUB_TOKEN')} if (lookup('ansible.builtin.env', 'GITHUB_TOKEN')) else {} }}"
+vscode_extensions:
+  - ms-python.python
+  - redhat.vscode-yaml
+  - redhat.ansible
+  - redhat.vscode-redhat-account
+  - hashicorp.terraform
+#  - hashicorp.terraform-docs
+  - hashicorp.hcl
+  - warpnet.saltstack-extension-pack
+  - GitLab.gitlab-workflow
+  - ms-vscode.powershell
+  - ms-kubernetes-tools.vscode-kubernetes-tools
+  - timonwong.shellcheck
+#  - warpnet.salt-lint
+#  - GitHub.copilot
+#  - GitHub.copilot-chat
+#  - ms-azuretools.vscode-azureterraform
