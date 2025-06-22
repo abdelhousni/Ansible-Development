@@ -1,7 +1,8 @@
 ---
 - name: Deploy Ansible development server
-  hosts: localhost ansible_connection=local
+  hosts: localhost
   become: true
+  connection: local
 
   vars:
     # username for private automation hub for EE or to password protected registry
