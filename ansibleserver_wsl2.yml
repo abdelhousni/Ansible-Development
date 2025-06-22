@@ -23,7 +23,7 @@
     # name of key, uncomment and update ifnot  using self-signed
     # key_name: KEY.key
     # specific image to pull to development server and assign in ansible-navigator.yml
-    ansible_image: registry.redhat.io/ansible-automation-platform-23/ee-supported-rhel8:latest
+    ansible_image: registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel9:latest
     # Deploy an inventory, group variables and host variables files from files folder in role
     deploy_inventory: true
     # Deploy an example repository with a basic role structure
