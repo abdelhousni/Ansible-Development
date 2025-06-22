@@ -155,12 +155,26 @@
     mode: "0644"
   when: deploy_inventory
 
-- name: Install ansible extension
-  become_user: "{{ username }}"
+# - name: Install ansible extension
+#   become_user: "{{ username }}"
+#   become: true
+#   ansible.builtin.command: /bin/code-server --install-extension redhat.ansible --install-extension redhat.vscode-redhat-account
+#   register: result
+#   changed_when: "'was successfully installed' in result.stdout"
+
+- name: Install VS Code extensions
   become: true
-  ansible.builtin.command: /bin/code-server --install-extension redhat.ansible --install-extension redhat.vscode-redhat-account
+  become_user: "{{ username }}"
+  # 2. Loop over the list of extensions and install each one.
+  # The `{{ item }}` variable is automatically populated by the loop with each extension name.
+  ansible.builtin.command: "/bin/code-server --install-extension {{ item }}"
+  loop: "{{ vscode_extensions }}"
   register: result
   changed_when: "'was successfully installed' in result.stdout"
+  # Use a loop_control to make the output cleaner, showing the item being processed.
+  loop_control:
+    label: "{{ item }}"
+
 
 - name: Allow code-server to listen on port 443
   community.general.capabilities:
