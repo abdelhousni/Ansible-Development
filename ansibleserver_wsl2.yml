@@ -1,6 +1,6 @@
 ---
 - name: Deploy Ansible development server
-  hosts: all
+  hosts: localhost ansible_connection=local
   become: true
 
   vars:
