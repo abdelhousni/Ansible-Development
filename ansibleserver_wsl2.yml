@@ -13,11 +13,11 @@
     # username for development server
     username: "{{ lookup('env', 'USER') }}"
     # port for web server access
-    dev_server_port: 443
+    dev_server_port: 8080
     # folder to copy ssl certs from (built into EE or mounted at runtime) or localhost folder if running ansible-playbook
-    certandkeysourcefolder: /certs/
+    #certandkeysourcefolder: /certs/
     # folder to create to deploy ssl certs to
-    certandkeydestfolder: /etc/pki/tls/certs/
+    #certandkeydestfolder: /etc/pki/tls/certs/
     # name of certificate, uncomment and update ifnot  using self-signed
     # cert_name: CERT.cer
     # name of key, uncomment and update ifnot  using self-signed
