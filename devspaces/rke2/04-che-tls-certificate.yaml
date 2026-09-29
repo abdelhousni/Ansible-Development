@@ -1,0 +1,31 @@
+# Wildcard certificate for Che. Che serves the dashboard on the domain itself
+# and exposes workspace endpoints on <hash>.<domain>, so both names are needed,
+# along with a wildcard DNS record *.che.example.com pointing at the RKE2
+# ingress nodes / load balancer.
+#
+# A wildcard certificate from a public ACME CA requires a DNS-01 solver on
+# the ClusterIssuer.
+#
+# The che-operator only picks up the secret when it carries the
+# app.kubernetes.io/part-of=che.eclipse.org label, hence the secretTemplate.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eclipse-che
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: che-tls
+  namespace: eclipse-che
+spec:
+  secretName: che-tls
+  secretTemplate:
+    labels:
+      app.kubernetes.io/part-of: che.eclipse.org
+  dnsNames:
+    - che.example.com
+    - "*.che.example.com"
+  issuerRef:
+    kind: ClusterIssuer
+    name: my-cluster-issuer # change to your ClusterIssuer

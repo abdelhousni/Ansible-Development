@@ -1,0 +1,108 @@
+# OPTIONAL: minimal Keycloak to act as the OIDC provider for Che and the
+# Kubernetes API server. Skip this file if you already have an OIDC provider
+# (Keycloak, Dex, Entra ID, ...).
+#
+# This runs Keycloak in dev mode with an embedded database: realms and users
+# are LOST when the pod restarts. For anything beyond a lab, use the Keycloak
+# operator with a real database.
+#
+# Replace keycloak.example.com and the ClusterIssuer name before applying.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-tls
+  namespace: keycloak
+spec:
+  secretName: keycloak-tls
+  dnsNames:
+    - keycloak.example.com
+  issuerRef:
+    kind: ClusterIssuer
+    name: my-cluster-issuer # change to your ClusterIssuer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: keycloak
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.0.7
+          args: ["start-dev"]
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: "admin"
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              value: "admin" # change me
+            - name: KC_HOSTNAME
+              value: "https://keycloak.example.com"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            # TLS terminates at Traefik, which sets X-Forwarded-* headers.
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /realms/master
+              port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - keycloak.example.com
+      secretName: keycloak-tls
+  rules:
+    - host: keycloak.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 8080

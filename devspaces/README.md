@@ -8,6 +8,8 @@ Eclipse Che Repo: https://github.com/eclipse-che/che-server
 
 OpenShift Developer Sandbox: https://developers.redhat.com/developer-sandbox/ide
 
+Running on RKE2 with Traefik instead of OpenShift? See [rke2/README.md](rke2/README.md).
+
 # Pre OCP 4.20 - Modifying Permissions For Ansible-Lint And Bash To Work In OpenShift Dev Spaces or Eclipse Che
 
 1) Modify the ContainerFile in olddevee to utilize your Execution Environment. Make any changes to .bashrc for your terminal requirements.

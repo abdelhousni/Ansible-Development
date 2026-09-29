@@ -1,0 +1,19 @@
+# Runs every workspace pod in its own Linux user namespace (spec.hostUsers:
+# false). Required because 05-checluster-patch.yaml sets procMount: Unmasked
+# for all workspace containers.
+#
+# The che-operator owns the per-Che DevWorkspaceOperatorConfig and leaves
+# hostUsers unset on Kubernetes, so the value is set on the global config,
+# which the DevWorkspace Operator merges underneath it.
+#
+# The namespace must be the one running the DevWorkspace Operator
+# (devworkspace-controller when installed by chectl). Check with:
+#   kubectl get deploy -A | grep devworkspace-controller
+apiVersion: controller.devfile.io/v1alpha1
+kind: DevWorkspaceOperatorConfig
+metadata:
+  name: devworkspace-operator-config
+  namespace: devworkspace-controller
+config:
+  workspace:
+    hostUsers: false
