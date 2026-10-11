@@ -1,0 +1,42 @@
+schemaVersion: 2.3.0
+metadata:
+  name: ansible-development # change this name per workspace
+attributes:
+  # Redundant with 06-devworkspace-operator-config.yaml; kept so this workspace
+  # still gets its own user namespace if the global setting is missing.
+  pod-overrides:
+    spec:
+      hostUsers: false
+components:
+  - container:
+      args: ['tail', '-f', '/dev/null']
+      image: 'ghcr.io/ansible/ansible-devspaces:latest' # change for your devspaces image
+      memoryRequest: 256M
+      memoryLimit: 6Gi
+      cpuRequest: 250m
+      cpuLimit: 2000m
+    name: ansible
+    attributes:
+      # /dev/fuse and /dev/net/tun for podman, advertised by
+      # 02-generic-device-plugin.yaml (containerd has no equivalent of the
+      # CRI-O device annotation used on OpenShift).
+      container-overrides:
+        resources:
+          limits:
+            squat.ai/fuse: "1"
+            squat.ai/tun: "1"
+commands:
+  # containerd mounts /sys/fs/cgroup read-only, so the image's set-cgroups.sh
+  # cannot delegate cgroups to the workspace user as it does on OpenShift.
+  # When that is the case, tell podman to run nested containers without cgroups.
+  - id: podman-cgroups-fallback
+    exec:
+      component: ansible
+      commandLine: |
+        if [ ! -w /sys/fs/cgroup/cgroup.procs ] && [ ! -f "${HOME}/.config/containers/containers.conf" ]; then
+          mkdir -p "${HOME}/.config/containers"
+          printf '[containers]\ncgroups = "disabled"\npids_limit = 0\n\n[engine]\ncgroup_manager = "cgroupfs"\nevents_logger = "file"\n' > "${HOME}/.config/containers/containers.conf"
+        fi
+events:
+  postStart:
+    - podman-cgroups-fallback

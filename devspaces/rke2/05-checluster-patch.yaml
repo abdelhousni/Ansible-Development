@@ -1,0 +1,73 @@
+# CheCluster patch for RKE2 with Traefik. Pass it to chectl:
+#   chectl server:deploy --platform k8s --domain che.example.com \
+#     --skip-cert-manager --che-operator-cr-patch-yaml 05-checluster-patch.yaml
+# or apply it to an existing instance:
+#   kubectl patch checluster eclipse-che -n eclipse-che --type merge \
+#     --patch-file 05-checluster-patch.yaml
+kind: CheCluster
+apiVersion: org.eclipse.che/v2
+spec:
+  networking:
+    ingressClassName: traefik
+    tlsSecretName: che-tls
+    # Setting any annotation replaces the operator's nginx defaults
+    # (proxy timeouts, ssl-redirect, proxy-buffer-size); Traefik gets the
+    # equivalents from 01-rke2-traefik-config.yaml.
+    annotations:
+      # Workspace endpoint ingresses are created without spec.ingressClassName
+      # and only honour this annotation, so keep it even though
+      # ingressClassName is set above.
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    auth:
+      # Must match the kube-apiserver --oidc-* flags in 00-rke2-server-config.yaml
+      identityProviderURL: "https://keycloak.example.com/realms/che"
+      oAuthClientName: k8s-client
+      oAuthSecret: eclipse-che # client secret, change me
+      gateway:
+        deployment:
+          containers:
+            - name: oauth-proxy
+              env:
+                - name: OAUTH2_PROXY_BACKEND_LOGOUT_URL
+                  value: "https://keycloak.example.com/realms/che/protocol/openid-connect/logout?id_token_hint={id_token}"
+  components:
+    cheServer:
+      extraProperties:
+        CHE_OIDC_USERNAME__CLAIM: email
+  devEnvironments:
+    # On non-OpenShift clusters the operator forces
+    # disableContainerRunCapabilities=true (it relies on an OpenShift SCC), so
+    # the equivalent settings for nested podman are applied here instead,
+    # together with hostUsers=false from 06-devworkspace-operator-config.yaml.
+    security:
+      # The workspace image is built around the "user" account (UID 1000):
+      # /etc/passwd, /etc/subuid, /etc/subgid and sudoers. The Kubernetes
+      # default of UID 1234 breaks sudo and rootless podman.
+      podSecurityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        runAsNonRoot: true
+      # Mirrors the OpenShift "container-run" defaults, plus the profiles
+      # containerd applies by default but CRI-O on OpenShift does not.
+      containerSecurityContext:
+        allowPrivilegeEscalation: true
+        # Lets podman mount /proc for nested containers. Safe only because the
+        # pod runs in its own user namespace (hostUsers: false).
+        procMount: Unmasked
+        capabilities:
+          add: ["SETGID", "SETUID", "CHOWN"]
+        # containerd's RuntimeDefault seccomp profile blocks unshare/mount,
+        # which rootless podman needs.
+        seccompProfile:
+          type: Unconfined
+        # Ubuntu/Debian nodes: the default containerd AppArmor profile denies
+        # mount (fuse-overlayfs). Ignored on nodes without AppArmor.
+        appArmorProfile:
+          type: Unconfined
+        # SELinux-enforcing nodes (RHEL/Rocky + rke2-selinux): uncomment so
+        # podman can run inside the workspace, as OpenShift does.
+        # seLinuxOptions:
+        #   type: container_engine_t

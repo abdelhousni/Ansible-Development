@@ -1,0 +1,73 @@
+# Exposes /dev/fuse and /dev/net/tun to workspace pods.
+#
+# On OpenShift, CRI-O injects these devices through the
+# "io.kubernetes.cri-o.Devices" pod annotation. RKE2 uses containerd, which
+# ignores that annotation, so a device plugin advertises them as the
+# extended resources squat.ai/fuse and squat.ai/tun instead. The RKE2 devfile
+# requests one of each.
+#   - /dev/fuse    -> fuse-overlayfs, the podman storage driver in the image
+#   - /dev/net/tun -> pasta/slirp4netns networking for rootless podman
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: generic-device-plugin
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: generic-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generic-device-plugin
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generic-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+          effect: NoExecute
+        - operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: generic-device-plugin
+          image: ghcr.io/squat/generic-device-plugin:latest # pin a digest for production
+          args:
+            - --device
+            - |
+              name: fuse
+              groups:
+                - count: 64
+                  paths:
+                    - path: /dev/fuse
+            - --device
+            - |
+              name: tun
+              groups:
+                - count: 64
+                  paths:
+                    - path: /dev/net/tun
+          resources:
+            requests:
+              cpu: 50m
+              memory: 10Mi
+            limits:
+              cpu: 50m
+              memory: 20Mi
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev

@@ -1,0 +1,27 @@
+# Snippet to merge into /etc/rancher/rke2/config.yaml on EVERY RKE2 server node,
+# then restart RKE2: systemctl restart rke2-server
+#
+# Replace keycloak.example.com / realm / client ID with your OIDC provider values.
+# They must match networking.auth.* in 05-checluster-patch.yaml.
+
+# Deploy Traefik as the ingress controller (default in RKE2 >= v1.36).
+# Use "ingress-controller: [traefik, ingress-nginx]" while migrating; the first
+# entry becomes the default IngressClass.
+ingress-controller: traefik
+
+# Eclipse Che on plain Kubernetes authenticates users with OIDC tokens against
+# the Kubernetes API server, so the API server must trust the same issuer.
+kube-apiserver-arg:
+  - "oidc-issuer-url=https://keycloak.example.com/realms/che"
+  - "oidc-client-id=k8s-client"
+  - "oidc-username-claim=email"
+  # Only needed when the issuer certificate is NOT signed by a public CA.
+  # /var/lib/rancher/rke2/server/tls is already mounted into the kube-apiserver
+  # static pod, so no extra mount is required for this path.
+  - "oidc-ca-file=/var/lib/rancher/rke2/server/tls/oidc-ca.crt"
+  # Only needed on Kubernetes < 1.33, where these gates are not on by default:
+  # - "feature-gates=UserNamespacesSupport=true,ProcMountType=true"
+
+# Only needed on Kubernetes < 1.33 (must match the API server gates above):
+# kubelet-arg:
+#   - "feature-gates=UserNamespacesSupport=true,ProcMountType=true"
